@@ -4,9 +4,7 @@ A Docker-based web application that lets you follow YouTube channels, automatica
 
 ![UnTube feed](screenshots/untube%20feed.png)
 
-## Screenshots
-
-![UnTube feed](screenshots/untube%20feed.png)
+[View all screenshots](screenshots/)
 
 ## Features
 
