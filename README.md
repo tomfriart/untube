@@ -1,5 +1,7 @@
 # UnTube — Self-Hosted YouTube Channel Downloader & Viewer
 
+> **Disclaimer:** This project was built entirely through AI prompting using [Claude](https://claude.ai). AI can make mistakes, and this application is not perfect — bugs should be expected. You are free to modify, improve, and adapt this project in any way you like.
+
 A Docker-based web application that lets you follow YouTube channels, automatically download their videos, and watch them in a clean, ad-free interface — all on your own hardware.
 
 ![UnTube feed](screenshots/untube%20feed.png)
@@ -123,10 +125,6 @@ volumes:
 - **Frontend** — React 18, Vite, hls.js
 - **Serving** — nginx (reverse proxy + static files)
 - **Packaging** — Docker Compose
-
-## Disclaimer
-
-This project was built entirely through AI prompting using [Claude](https://claude.ai). AI can make mistakes, and this application is not perfect — bugs should be expected. You are free to modify, improve, and adapt this project in any way you like.
 
 ## License
 
