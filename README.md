@@ -124,6 +124,10 @@ volumes:
 - **Serving** — nginx (reverse proxy + static files)
 - **Packaging** — Docker Compose
 
+## Disclaimer
+
+This project was built entirely through AI prompting using [Claude](https://claude.ai). AI can make mistakes, and this application is not perfect — bugs should be expected. You are free to modify, improve, and adapt this project in any way you like.
+
 ## License
 
 MIT
