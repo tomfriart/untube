@@ -134,7 +134,7 @@ volumes:
 ## Troubleshooting
 
 - **Videos not downloading?** Check backend logs: `docker compose logs backend`
-- **yt-dlp errors?** The YouTube extractor updates frequently — rebuild: `docker compose build --no-cache backend`
+- **yt-dlp errors?** YouTube frequently changes its internals, which breaks yt-dlp. This is the most common source of issues and is outside this project's control. When it happens, rebuild the backend image to get the latest yt-dlp: `docker compose build --no-cache backend`. Expect this to be needed every few weeks.
 - **Disk space?** Monitor `./downloads/` — higher quality = bigger files; enable auto-delete in Settings
 
 ## Tech Stack
