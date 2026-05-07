@@ -1,5 +1,6 @@
-# Downloaded videos
-downloads/
+# Downloaded videos (keep folder, ignore contents)
+downloads/*
+!downloads/.gitkeep
 
 # Database & cache
 data/*.sqlite
