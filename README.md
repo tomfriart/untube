@@ -2,6 +2,14 @@
 
 ---
 
+### 🔒 For Local Network Use Only
+
+> **This application is not designed or intended to be run on a public-facing URL.**
+> There is no authentication, no user management, and no security hardening.
+> **Run it exclusively on your local network or behind a VPN. Do not expose it to the internet.**
+
+---
+
 ### ⚠️ Disclaimer
 
 This project was built **entirely through AI prompting** using [Claude](https://claude.ai) — no manual code was written by the author. AI can and does make mistakes, and this application is not perfect. **Bugs should be expected.**
