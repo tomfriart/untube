@@ -2,7 +2,11 @@
 
 A Docker-based web application that lets you follow YouTube channels, automatically download their videos, and watch them in a clean, ad-free interface — all on your own hardware.
 
-![UnTube screenshot](docs/screenshot.png)
+![UnTube feed](screenshots/untube%20feed.png)
+
+## Screenshots
+
+![UnTube feed](screenshots/untube%20feed.png)
 
 ## Features
 
