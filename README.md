@@ -25,7 +25,7 @@ A Docker-based web application that lets you follow YouTube channels, automatica
 ### Run
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/untube.git
+git clone https://github.com/tomfriart/untube.git
 cd untube
 
 docker compose up -d --build
