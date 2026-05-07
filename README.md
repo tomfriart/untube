@@ -8,7 +8,7 @@ This project was built **entirely through AI prompting** using [Claude](https://
 
 The author does not take any credit for the features and technologies that make UnTube function — all credit goes to the open-source projects this app is built on: [yt-dlp](https://github.com/yt-dlp/yt-dlp), [Flask](https://flask.palletsprojects.com/), [React](https://react.dev/), and others.
 
-You are free to modify, improve, and adapt this project in any way you like.
+You are free to modify, improve, and adapt this project in any way you like. **Use at your own risk.**
 
 ---
 
