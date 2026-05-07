@@ -1,0 +1,21 @@
+services:
+  backend:
+    build: ./backend
+    container_name: untube-backend
+    volumes:
+      - ./data:/app/data
+      - ./downloads:/app/downloads
+    environment:
+      - FLASK_ENV=production
+      - DATA_DIR=/app/data
+      - DOWNLOADS_DIR=/app/downloads
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: untube-frontend
+    ports:
+      - "3987:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
