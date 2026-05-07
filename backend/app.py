@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS seen_videos (
 _DEFAULT_SETTINGS = {
     'quality': '720',
     'skip_shorts': True,
-    'check_interval': 60,
+    'check_interval': 180,
     'max_concurrent': 1,
     'max_video_duration': 60,
     'new_badge_days': 2,
@@ -2129,7 +2129,7 @@ if __name__ == '__main__':
     s = get_settings()
     rebuild_executor(s.get('max_concurrent', 2))
     scheduler.start()
-    reschedule(s.get('check_interval', 30))
+    reschedule(s.get('check_interval', 180))
     scheduler.add_job(refresh_all_metadata, 'interval', weeks=1, id='meta_refresh', replace_existing=True)
     scheduler.add_job(_run_analyze, 'interval', weeks=1, id='analyze', replace_existing=True)
     scheduler.add_job(_cleanup_seen_videos, 'interval', days=1, id='seen_cleanup', replace_existing=True)

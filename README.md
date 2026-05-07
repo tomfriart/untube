@@ -81,7 +81,7 @@ All settings are adjustable from the **Settings** panel in the UI:
 |--------------------|----------|-----------------------------------------------------|
 | Quality            | 720p     | Video download resolution (360p–4K or best)         |
 | Skip Shorts        | On       | Don't download videos under 60 seconds              |
-| Check Interval     | 30 min   | How often to poll channels for new uploads          |
+| Check Interval     | 180 min  | How often to poll channels for new uploads          |
 | Auto-Delete        | Off      | Remove videos older than N days                     |
 | Notifications      | Off      | Apprise URL for push notifications on new downloads |
 
