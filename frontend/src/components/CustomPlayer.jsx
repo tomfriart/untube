@@ -197,21 +197,22 @@ export function CustomPlayer({
     v.paused ? v.play().catch(() => {}) : v.pause()
   }, [vRef])
 
-  // Desktop: click video to play/pause
+  // Tap/click video area — only show/hide controls, never toggle play
   const handleContainerClick = useCallback(() => {
-    togglePlay()
-  }, [togglePlay])
+    showControlsNow()
+  }, [showControlsNow])
 
-  // Mobile: tap video to show controls (if hidden) or toggle play (if shown)
-  // e.preventDefault() stops the redundant click event from also firing
   const handleContainerTouchEnd = useCallback(e => {
     e.preventDefault()
-    if (!showControlsRef.current) {
-      showControlsNow()
-    } else {
-      togglePlay()
-    }
-  }, [showControlsNow, togglePlay])
+    showControlsNow()
+  }, [showControlsNow])
+
+  const seekRelative = useCallback(secs => {
+    const v = vRef.current
+    if (!v || !duration) return
+    v.currentTime = Math.max(0, Math.min(duration, v.currentTime + secs))
+    showControlsNow()
+  }, [vRef, duration, showControlsNow])
 
   const toggleMute = () => {
     const v = vRef.current
@@ -300,6 +301,23 @@ export function CustomPlayer({
           ))}
         </div>
       )}
+
+      {/* Center overlay: rewind / play-pause / skip */}
+      <div
+        className={`cp-center-overlay${showControls ? '' : ' hidden'}`}
+        onClick={e => e.stopPropagation()}
+        onTouchEnd={e => e.stopPropagation()}
+      >
+        <button className="cp-center-btn" onClick={() => seekRelative(-10)} title="Rewind 10s">
+          <I.Rewind10 />
+        </button>
+        <button className="cp-center-btn cp-center-play" onClick={togglePlay} title={playing ? 'Pause' : 'Play'}>
+          {playing ? <I.Pause /> : <I.Play />}
+        </button>
+        <button className="cp-center-btn" onClick={() => seekRelative(10)} title="Skip 10s">
+          <I.Skip10 />
+        </button>
+      </div>
 
       <div
         className={`cp-controls${showControls ? '' : ' hidden'}`}

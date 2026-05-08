@@ -32,4 +32,16 @@ export const I = {
     </svg>
   ),
   MoreVert: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>,
+  Rewind10: () => (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 5V2L7 7l5 5V8c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+      <text x="12" y="15.5" textAnchor="middle" fontSize="5.5" fontWeight="700" fontFamily="sans-serif">10</text>
+    </svg>
+  ),
+  Skip10: () => (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 5V2l5 5-5 5V8c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/>
+      <text x="12" y="15.5" textAnchor="middle" fontSize="5.5" fontWeight="700" fontFamily="sans-serif">10</text>
+    </svg>
+  ),
 }

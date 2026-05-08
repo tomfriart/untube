@@ -44,7 +44,35 @@ A Docker-based web application that lets you follow YouTube channels, automatica
 ### Prerequisites
 - Docker and Docker Compose
 
-### Run
+### Option 1 — Pull from Docker Hub (fastest)
+
+```bash
+docker pull tomfriart/untube:latest
+```
+
+Then create a `docker-compose.yml`:
+
+```yaml
+services:
+  untube:
+    image: tomfriart/untube:latest
+    container_name: untube
+    ports:
+      - "3987:80"
+    volumes:
+      - ./data:/app/data
+      - ./downloads:/app/downloads
+    restart: unless-stopped
+```
+
+```bash
+docker compose up -d
+
+# Open in your browser
+open http://localhost:3987
+```
+
+### Option 2 — Build from source
 
 ```bash
 git clone https://github.com/tomfriart/untube.git
@@ -64,16 +92,18 @@ docker compose down
 
 ## Architecture
 
+UnTube runs as a **single Docker container** combining the frontend and backend, managed by supervisord.
+
 ```
 untube/
-├── docker-compose.yml          # Orchestrates frontend + backend
+├── Dockerfile                  # Single image: React build → Python + nginx + supervisord
+├── nginx.conf                  # Serves frontend, proxies /api/* to Flask on localhost:5000
+├── supervisord.conf            # Runs Flask + nginx together in one container
+├── docker-compose.yml
 ├── backend/
-│   ├── Dockerfile
 │   ├── requirements.txt
 │   └── app.py                  # Flask API + yt-dlp + APScheduler
 ├── frontend/
-│   ├── Dockerfile              # Multi-stage: Vite build → nginx
-│   ├── nginx.conf              # Reverse proxy for API + media
 │   ├── package.json
 │   ├── vite.config.js
 │   ├── index.html
@@ -133,8 +163,8 @@ volumes:
 
 ## Troubleshooting
 
-- **Videos not downloading?** Check backend logs: `docker compose logs backend`
-- **yt-dlp errors?** YouTube frequently changes its internals, which breaks yt-dlp. This is the most common source of issues and is outside this project's control. When it happens, rebuild the backend image to get the latest yt-dlp: `docker compose build --no-cache backend`. Expect this to be needed every few weeks.
+- **Videos not downloading?** Check logs: `docker compose logs untube`
+- **yt-dlp errors?** YouTube frequently changes its internals, which breaks yt-dlp. This is the most common source of issues and is outside this project's control. When it happens, rebuild the image to get the latest yt-dlp: `docker compose build --no-cache` (or `docker pull tomfriart/untube:latest` if using Docker Hub). Expect this to be needed every few weeks.
 - **Disk space?** Monitor `./downloads/` — higher quality = bigger files; enable auto-delete in Settings
 
 ## Tech Stack
