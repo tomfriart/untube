@@ -124,7 +124,7 @@ const css = `
 @media(min-width:769px) and (max-width:1100px){.watch-layout{flex-direction:column}.watch-sidebar{width:100%;min-width:0}.video-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}}
 .custom-player{position:relative;background:#000;overflow:hidden;border-radius:var(--radius);width:100%;user-select:none}
 .custom-player video{width:100%;display:block}.cp-subtitle-overlay{position:absolute;bottom:16px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;z-index:5;padding:0 10%;transition:bottom .2s}.cp-subtitle-overlay.controls-visible{bottom:72px}.cp-subtitle-overlay span{background:rgba(0,0,0,.78);color:#fff;font-size:15px;font-weight:500;line-height:1.4;padding:3px 10px;border-radius:3px;text-align:center;max-width:100%}
-.custom-player.pseudo-fs{position:fixed!important;inset:0!important;width:100%!important;height:100vh!important;z-index:9999!important;border-radius:0!important;max-width:none!important}
+.custom-player.pseudo-fs{position:fixed!important;inset:0!important;width:100%!important;height:100dvh!important;z-index:9999!important;border-radius:0!important;max-width:none!important}
 .custom-player.pseudo-fs video{width:100%!important;height:100%!important;object-fit:contain!important}
 .cp-controls{position:absolute;bottom:0;left:0;right:0;padding:0 12px 10px;transition:opacity .2s;z-index:10}
 .cp-controls.hidden{opacity:0;pointer-events:none}
