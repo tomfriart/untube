@@ -28,6 +28,7 @@ RUN mkdir -p /app/data /app/downloads
 
 COPY --from=frontend-build /app/dist /usr/share/nginx/html
 
+RUN rm -f /etc/nginx/sites-enabled/default
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
