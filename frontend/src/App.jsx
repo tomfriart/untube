@@ -61,6 +61,9 @@ export default function App() {
   const [showSegs, setShowSegs] = useState(false)
   const [scrolledDown, setScrolledDown] = useState(false)
   const [seenVids, setSeenVids] = useState(() => new Set(JSON.parse(localStorage.getItem('seenVids') || '[]')))
+  const [showOneOff, setShowOneOff] = useState(false)
+  const [oneOffUrl, setOneOffUrl] = useState('')
+  const [oneOffStatus, setOneOffStatus] = useState('')
   const [newCounts, setNewCounts] = useState({})
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
@@ -373,13 +376,16 @@ export default function App() {
 
   const onLoaded = useCallback(() => {
     if (!vRef.current || !cur) return
+    const v = vRef.current
+    let didSeek = false
     if (!playbackQ || playbackQ === 'original') {
       const p = pendingSeekRef.current
-      if (p && p > 2) { vRef.current.currentTime = p; pendingSeekRef.current = null }
-      else { const s = wp[cur.id] || 0, d = vRef.current.duration || cur.duration || 0; if (s > 2 && d > 0 && s / d < .95) vRef.current.currentTime = s }
+      if (p && p > 2) { v.currentTime = p; pendingSeekRef.current = null; didSeek = true }
+      else { const s = wp[cur.id] || 0, d = v.duration || cur.duration || 0; if (s > 2 && d > 0 && s / d < .95) { v.currentTime = s; didSeek = true } }
     }
-    const sv = settings.volume; if (sv !== undefined && sv !== null) vRef.current.volume = sv
-  }, [cur, wp, settings.volume, playbackQ])
+    const sv = settings.volume; if (sv !== undefined && sv !== null) v.volume = sv
+    if (didSeek && settings.autoplay !== false) v.play().catch(() => {})
+  }, [cur, wp, settings.volume, settings.autoplay, playbackQ])
 
   const addChannel = async () => {
     if (!addUrl.trim()) return
@@ -425,6 +431,26 @@ export default function App() {
   }
   const seekTo = t => { if (vRef.current) { vRef.current.currentTime = t; vRef.current.play() } }
 
+  const submitOneOff = async () => {
+    if (!oneOffUrl.trim()) return
+    setOneOffStatus('Queuing…')
+    try {
+      const r = await fetch(`${API}/api/downloads/oneoff`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: oneOffUrl }),
+      })
+      const d = await r.json()
+      if (r.ok) {
+        setOneOffStatus('Download queued!')
+        setOneOffUrl('')
+        fD(chFilter); fCh()
+        setTimeout(() => { setShowOneOff(false); setOneOffStatus('') }, 1500)
+      } else {
+        setOneOffStatus(d.error || 'Error')
+      }
+    } catch { setOneOffStatus('Error') }
+  }
+
   const deleteVideo = async (e, vid) => { e.stopPropagation(); if (!confirm('Delete this video?')) return; await fetch(`${API}/api/videos/${vid}`, { method: 'DELETE' }); fV(chFilter) }
   const redownloadVideo = async v => { setConfirmRedownload(null); await fetch(`${API}/api/videos/${v.id}/restore`, { method: 'POST' }); fV(chFilter); fD(chFilter) }
 
@@ -466,8 +492,8 @@ export default function App() {
   }, [cur, videos])
   const recommendations = useMemo(() => {
     if (!cur) return []
-    return [...videos.filter(v => v.channel_id !== cur.channel_id && !v.ghost)].sort(() => Math.random() - .5).slice(0, 8)
-  }, [cur, videos])
+    return [...sortVids.filter(v => v.channel_id !== cur.channel_id && !v.ghost)].sort(() => Math.random() - .5).slice(0, 8)
+  }, [cur, sortVids])
   const feedVideos = useMemo(() => [...videos.filter(v => !v.ghost), ...(showGhosts ? videos.filter(v => v.ghost) : [])], [videos, showGhosts])
   const ghostCount = videos.filter(v => v.ghost).length
 
@@ -621,10 +647,12 @@ export default function App() {
     sortedChannels, newCounts, checking, navTo, setShowAdd, setMobileMenu, checkNow,
     settingsPage, setSettingsPage,
     navRef: sidebarNavRef,
+    openOneOff: () => { setShowOneOff(true); setMobileMenu(false) },
   }
 
   const watchSidebar = (
     <div className="watch-sidebar">
+      {cur?.channel_id !== 'uncategorized' && chVids.length > 0 && <>
       <div className="playlist-header">More from {cur?.channel_name}</div>
       <div className="playlist-list">
         {chVids.map(v => {
@@ -644,6 +672,7 @@ export default function App() {
           )
         })}
       </div>
+      </>}
       {recommendations.length > 0 && <>
         <div className="section-divider">Videos you may like</div>
         <div className="playlist-list">
@@ -672,8 +701,11 @@ export default function App() {
     <div className="watch-info">
       <div className="watch-title">{cur?.title}</div>
       <div className="watch-meta">
-        <Av src={channels.find(c => c.id === cur?.channel_id)?.thumbnail} name={cur?.channel_name} size={24} />
-        <span style={{ fontWeight: 600 }}>{cur?.channel_name}</span>
+        <a href={`https://www.youtube.com/watch?v=${cur?.id}`} target="_blank" rel="noreferrer"
+           style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'inherit', textDecoration: 'none' }}>
+          <Av src={channels.find(c => c.id === cur?.channel_id)?.thumbnail} name={cur?.channel_name || (cur?.channel_id === 'uncategorized' ? 'Uncategorized' : '?')} size={24} />
+          <span style={{ fontWeight: 600 }}>{cur?.channel_name}</span>
+        </a>
         <span>·</span><span>{fmtViews(cur?.view_count)}</span>
         <span>·</span><span>{fmtDate(cur?.upload_date)}</span>
         {!useCustomPlayer && (
@@ -770,7 +802,7 @@ export default function App() {
           {channels.length > 0 && (
             <div className="mobile-channel-strip">
               <Av name="All" size={34} onClick={() => navTo('feed', null)} active={!chFilter && view === 'feed'} src="" />
-              {sortedChannels.map(c => <Av key={c.id} src={c.thumbnail} name={c.name} size={34} onClick={() => navTo('feed', c.id)} active={chFilter === c.id} />)}
+              {sortedChannels.filter(c => c.id !== 'uncategorized').map(c => <Av key={c.id} src={c.thumbnail} name={c.name} size={34} onClick={() => navTo('feed', c.id)} active={chFilter === c.id} />)}
             </div>
           )}
         </div>
@@ -1023,6 +1055,7 @@ export default function App() {
               checkNow={checkNow}
               checking={checking}
               settingsPage={settingsPage}
+              onRefresh={() => { fCh(); fV(chFilter) }}
             />
           )}
         </div>
@@ -1051,6 +1084,37 @@ export default function App() {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button className="btn" onClick={() => setConfirmRedownload(null)}>Cancel</button>
               <button className="btn btn-accent" onClick={() => redownloadVideo(confirmRedownload)}><I.Download /> Download</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showOneOff && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowOneOff(false); setOneOffUrl(''); setOneOffStatus('') } }}>
+          <div className="modal">
+            <div className="modal-title">
+              Download YouTube URL
+              <button className="btn-icon" onClick={() => { setShowOneOff(false); setOneOffUrl(''); setOneOffStatus('') }}><I.X /></button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">YouTube URL</label>
+              <input
+                className="form-input"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={oneOffUrl}
+                onChange={e => setOneOffUrl(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && submitOneOff()}
+                autoFocus
+              />
+              <div className="form-hint">Paste any YouTube video URL — it will be saved under Uncategorized</div>
+              {oneOffStatus && (
+                <div style={{ fontSize: 13, marginTop: 6, color: 'var(--accent)' }}>{oneOffStatus}</div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn" onClick={() => { setShowOneOff(false); setOneOffUrl(''); setOneOffStatus('') }}>Cancel</button>
+              <button className="btn btn-accent" onClick={submitOneOff} disabled={!oneOffUrl.trim()}>
+                <I.Download /> Download
+              </button>
             </div>
           </div>
         </div>

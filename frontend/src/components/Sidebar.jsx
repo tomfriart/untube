@@ -11,7 +11,7 @@ const SETTINGS_PAGES = [
 export function SidebarContent({
   view, chFilter, isMobileMenu, sidebarCollapsed, setSidebarCollapsed,
   sortedChannels, newCounts, navTo, setShowAdd, setMobileMenu, navRef,
-  settingsPage, setSettingsPage,
+  settingsPage, setSettingsPage, openOneOff,
 }) {
   return (
     <>
@@ -64,7 +64,7 @@ export function SidebarContent({
               <I.Settings /><span className="channel-name">Settings</span>
             </button>
             <div className="nav-section-title">Channels</div>
-            {sortedChannels.map(c => {
+            {sortedChannels.filter(c => c.id !== 'uncategorized').map(c => {
               const n = (newCounts && newCounts[c.id]) || 0
               return (
                 <button
@@ -85,6 +85,26 @@ export function SidebarContent({
             })}
             <button className="nav-item" onClick={() => { setShowAdd(true); setMobileMenu(false) }}>
               <I.Plus /><span className="channel-name">Add Channel</span>
+            </button>
+            {sortedChannels.find(c => c.id === 'uncategorized') && (() => {
+              const n = (newCounts && newCounts['uncategorized']) || 0
+              return (
+                <button
+                  className={`nav-item ${chFilter === 'uncategorized' ? 'active' : ''}`}
+                  onClick={() => navTo('feed', 'uncategorized')}
+                  title="Uncategorized"
+                >
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <Av src="" name="Uncategorized" />
+                    {n > 0 && sidebarCollapsed && <div className="unread-dot" />}
+                  </div>
+                  <span className="channel-name">Uncategorized</span>
+                  {n > 0 && !sidebarCollapsed && <span className="unread-badge">{n}</span>}
+                </button>
+              )
+            })()}
+            <button className="nav-item" onClick={openOneOff}>
+              <I.Download /><span className="channel-name">Download URL</span>
             </button>
           </>
         )}

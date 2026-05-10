@@ -542,9 +542,39 @@ function PageChannels({ channels, sortedChannels, storage, updCh, rmCh, openBrow
   )
 }
 
-function PageSystem() {
+function PageSystem({ onRefresh }) {
+  const [importing, setImporting] = useState(false)
+  const [importMsg, setImportMsg] = useState('')
+
+  const doImport = async e => {
+    const file = e.target.files[0]; if (!file) return
+    setImporting(true); setImportMsg('')
+    const fd = new FormData(); fd.append('file', file)
+    const r = await fetch(`${API}/api/import`, { method: 'POST', body: fd }).catch(() => null)
+    const d = r ? await r.json().catch(() => ({})) : {}
+    if (r?.ok) {
+      setImportMsg(`Imported ${d.imported_channels} channels, ${d.imported_watch_progress} watch entries`)
+      onRefresh?.()
+    } else {
+      setImportMsg(d.error || 'Import failed')
+    }
+    setImporting(false)
+    e.target.value = ''
+  }
+
   return (
     <div style={{ maxWidth: 520 }}>
+      <div className="settings-section">
+        <div className="settings-section-title">Backup</div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <a href={`${API}/api/export`} download className="btn btn-primary">Export Backup</a>
+          <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+            {importing ? 'Importing…' : 'Import Backup'}
+            <input type="file" accept=".json" style={{ display: 'none' }} onChange={doImport} />
+          </label>
+        </div>
+        {importMsg && <div style={{ marginTop: 8, fontSize: 13, color: 'var(--text-muted)' }}>{importMsg}</div>}
+      </div>
       <YtdlpPanel />
     </div>
   )
@@ -553,7 +583,7 @@ function PageSystem() {
 export function SettingsPanel({
   settings, channels, sortedChannels, updS, updCh, rmCh,
   openBrowse, setShowAdd, editCh, setEditCh, checkNow, checking,
-  settingsPage,
+  settingsPage, onRefresh,
 }) {
   const [storage, setStorage] = useState({})
   useEffect(() => {
@@ -563,6 +593,6 @@ export function SettingsPanel({
   if (settingsPage === 'downloads') return <PageDownloads settings={settings} updS={updS} checkNow={checkNow} checking={checking} />
   if (settingsPage === 'playback')  return <PagePlayback  settings={settings} updS={updS} />
   if (settingsPage === 'channels')  return <PageChannels  channels={channels} sortedChannels={sortedChannels} storage={storage} updCh={updCh} rmCh={rmCh} openBrowse={openBrowse} setShowAdd={setShowAdd} editCh={editCh} setEditCh={setEditCh} settings={settings} />
-  if (settingsPage === 'system')    return <PageSystem />
+  if (settingsPage === 'system')    return <PageSystem onRefresh={onRefresh} />
   return null
 }

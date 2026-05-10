@@ -485,6 +485,19 @@ def update_video_height(vid, height):
         conn.execute('UPDATE videos SET height = ? WHERE id = ?', (height, vid))
 
 
+def update_video_full_meta(vid, title, upload_date, thumbnail, duration, view_count, like_count, description):
+    conn = _get_conn()
+    with conn:
+        conn.execute(
+            'UPDATE videos SET title=?, upload_date=?, thumbnail=?, duration=?,'
+            ' view_count=?, like_count=?, description=?,'
+            ' metadata_updates=COALESCE(metadata_updates,0)+1,'
+            ' metadata_updated_at=? WHERE id=?',
+            (title, upload_date, thumbnail, duration,
+             view_count, like_count, description,
+             datetime.now(timezone.utc).isoformat(), vid))
+
+
 def update_video_metadata_fields(vid, view_count, like_count, description):
     conn = _get_conn()
     with conn:
@@ -849,7 +862,11 @@ def _worker(stub, channel, quality, skip_shorts, max_days_old):
         'merge_output_format': 'mp4',
         'restrictfilenames': False,
         'progress_hooks': [make_progress_hook(vid)],
-        'postprocessors': [{'key': 'FFmpegVideoConvertor', 'preferedformat': 'mp4'}],
+        'postprocessors': [
+            {'key': 'FFmpegVideoConvertor', 'preferedformat': 'mp4'},
+            {'key': 'FFmpegMetadata', 'add_metadata': True},
+        ],
+        'parse_metadata': [f'{vid}:%(meta_youtube_id)s'],
         'writeautomaticsub': True,
         'subtitleslangs': ['en'],
         'subtitlesformat': 'vtt',
@@ -970,7 +987,9 @@ def _worker(stub, channel, quality, skip_shorts, max_days_old):
         'id': meta.get('id', vid),
         'title': meta.get('title', stub.get('title', '')),
         'description': meta.get('description', ''),
-        'channel_id': channel['id'], 'channel_name': channel['name'],
+        'channel_id': channel['id'],
+        'channel_name': (meta.get('uploader') or meta.get('channel') or channel['name'])
+                        if channel['id'] == 'uncategorized' else channel['name'],
         'duration': meta.get('duration', 0),
         'upload_date': ud,
         'view_count': meta.get('view_count', 0),
@@ -1251,6 +1270,75 @@ def r_cancel_all():
         for vid in active_downloads:
             cancelled_downloads.add(vid); active_downloads[vid]['status'] = 'cancelling'
     return jsonify({'ok': True})
+
+
+@app.route('/api/downloads/oneoff', methods=['POST'])
+def r_oneoff():
+    import re
+    url = (request.json or {}).get('url', '').strip()
+    if not url:
+        return jsonify({'error': 'URL required'}), 400
+    m = re.search(r'[?&]v=([A-Za-z0-9_-]+)', url) or re.search(r'youtu\.be/([A-Za-z0-9_-]+)', url)
+    if not m:
+        return jsonify({'error': 'Could not extract video ID from URL'}), 400
+    vid_id = m.group(1)
+    if not channel_exists('uncategorized'):
+        add_channel({'id': 'uncategorized', 'name': 'Uncategorized', 'url': '',
+                     'thumbnail': '', 'download_mode': 'all', 'enabled': 1})
+    channel = get_channel('uncategorized')
+    s = get_settings()
+    quality = channel.get('quality') or s.get('quality', '720')
+    stub = {'id': vid_id, 'url': url, 'title': vid_id, 'thumbnail': ''}
+    set_dl(vid_id, {'video_id': vid_id, 'title': vid_id, 'channel_id': 'uncategorized',
+                    'status': 'queued', 'progress': 0})
+    get_executor().submit(_worker, stub, channel, quality, False, 0)
+    return jsonify({'ok': True, 'video_id': vid_id})
+
+
+@app.route('/api/export', methods=['GET'])
+def r_export():
+    data = {
+        'version': 1,
+        'exported_at': datetime.now(timezone.utc).isoformat(),
+        'channels': [c for c in get_channels() if c['id'] != 'uncategorized'],
+        'settings': get_settings(),
+        'watch_progress': get_all_watch_progress(),
+    }
+    date_str = datetime.now().strftime('%Y-%m-%d')
+    from flask import Response
+    return Response(
+        json.dumps(data, indent=2),
+        mimetype='application/json',
+        headers={'Content-Disposition': f'attachment; filename=untube-export-{date_str}.json'},
+    )
+
+
+@app.route('/api/import', methods=['POST'])
+def r_import():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    try:
+        data = json.loads(request.files['file'].read())
+    except Exception:
+        return jsonify({'error': 'Invalid JSON'}), 400
+    if data.get('version') != 1:
+        return jsonify({'error': 'Unsupported backup version'}), 400
+    imported_channels = 0
+    for ch in data.get('channels', []):
+        if ch.get('id') and not channel_exists(ch['id']):
+            add_channel(ch)
+            imported_channels += 1
+    if data.get('settings'):
+        s = get_settings()
+        s.update(data['settings'])
+        save_settings(s)
+    imported_wp = 0
+    conn = _get_conn()
+    with conn:
+        for vid_id, t in (data.get('watch_progress') or {}).items():
+            conn.execute('INSERT OR IGNORE INTO watch_progress (video_id, time) VALUES (?, ?)', (vid_id, t))
+            imported_wp += 1
+    return jsonify({'ok': True, 'imported_channels': imported_channels, 'imported_watch_progress': imported_wp})
 
 
 @app.route('/api/progress/<vid>', methods=['GET'])
@@ -2124,10 +2212,149 @@ def reschedule(mins):
     scheduler.add_job(check_for_new_videos, 'interval', minutes=mins, id='chk', replace_existing=True)
 
 
+def _read_mp4_tags(mp4_path):
+    """Return dict of metadata tags embedded in an mp4, or {} on failure."""
+    try:
+        import json as _json
+        probe = subprocess.run(
+            ['ffprobe', '-v', 'quiet', '-print_format', 'json',
+             '-show_format', str(mp4_path)],
+            capture_output=True, timeout=15)
+        data = _json.loads(probe.stdout.decode())
+        tags = data.get('format', {}).get('tags', {})
+        # ffprobe lowercases tag keys on some builds, uppercase on others
+        return {k.lower(): v for k, v in tags.items()}
+    except Exception:
+        return {}
+
+
+def _enrich_scan_videos(vids):
+    """Fetch real metadata from YouTube for scan-registered videos and update the DB."""
+    logger.info(f"Enriching {len(vids)} scan-registered video(s) with YouTube metadata…")
+    updated = failed = 0
+    for vid in vids:
+        _rate_limit(2.0)
+        try:
+            with yt_dlp.YoutubeDL({**base_opts(), 'skip_download': True}) as ydl:
+                info = ydl.extract_info(f'https://www.youtube.com/watch?v={vid}', download=False)
+            if not info:
+                failed += 1
+                continue
+            ud = info.get('upload_date', '')
+            update_video_full_meta(
+                vid,
+                title=info.get('title', ''),
+                upload_date=ud,
+                thumbnail=info.get('thumbnail', f'https://i.ytimg.com/vi/{vid}/hqdefault.jpg'),
+                duration=int(info.get('duration') or 0),
+                view_count=int(info.get('view_count') or 0),
+                like_count=int(info.get('like_count') or 0),
+                description=info.get('description', ''),
+            )
+            logger.info(f"  Enriched '{info.get('title', vid)}' ({ud})")
+            updated += 1
+        except Exception as e:
+            logger.warning(f"  Enrich failed for {vid}: {e}")
+            failed += 1
+    logger.info(f"Enrichment complete: {updated} updated, {failed} failed")
+
+
+def _scan_downloads():
+    """Register .mp4 files in DOWNLOADS_DIR that are not already in the DB.
+
+    Reads embedded metadata tags (youtube_id, title, date) written at download
+    time.  Falls back to filename parsing for files without tags.
+    """
+    import re
+
+    def _safe_ch(name):
+        return "".join(c for c in name if c.isalnum() or c in (' ', '-', '_')).strip()
+
+    ch_map = {_safe_ch(ch['name']): ch for ch in get_channels()}
+    existing_ids = {r[0] for r in _get_conn().execute('SELECT id FROM videos')}
+
+    added = no_channel = 0
+    needs_enrichment = []
+
+    for mp4 in DOWNLOADS_DIR.rglob('*.mp4'):
+        rel = mp4.relative_to(DOWNLOADS_DIR)
+        parts = rel.parts
+        if len(parts) < 2:
+            continue
+
+        ch = ch_map.get(parts[0])
+        if ch is None:
+            no_channel += 1
+            continue
+
+        tags = _read_mp4_tags(mp4)
+        vid = tags.get('youtube_id', '').strip()
+
+        if not vid:
+            # Fall back to filename: "Title [VID_ID].mp4" or "VID_ID.mp4"
+            m = re.search(r'\[([A-Za-z0-9_-]+)\]$', mp4.stem)
+            vid = m.group(1) if m else mp4.stem
+
+        if not vid or vid in existing_ids:
+            continue
+
+        # Title: prefer tag, then filename, then empty
+        title = tags.get('title', '').strip()
+        if not title:
+            m = re.search(r'\[([A-Za-z0-9_-]+)\]$', mp4.stem)
+            title = mp4.stem[:m.start()].strip() if m else ''
+
+        # upload_date: prefer tag (YYYYMMDD), then approximate from dir
+        raw_date = tags.get('date', '').replace('-', '')
+        if re.match(r'^\d{8}$', raw_date):
+            upload_date = raw_date
+        elif len(parts) == 3 and re.match(r'^\d{4}-\d{2}$', parts[1]):
+            upload_date = parts[1].replace('-', '') + '01'
+        else:
+            upload_date = ''
+
+        vtt_fp = None
+        for f in mp4.parent.glob(f'*{vid}*.en.vtt'):
+            vtt_fp = str(f.relative_to(DOWNLOADS_DIR))
+            break
+
+        height = 0
+        try:
+            probe = subprocess.run(
+                ['ffprobe', '-v', 'error', '-select_streams', 'v:0',
+                 '-show_entries', 'stream=height', '-of', 'csv=p=0', str(mp4)],
+                capture_output=True, timeout=10)
+            height = int(probe.stdout.decode().strip() or 0)
+        except Exception:
+            pass
+
+        downloaded_at = datetime.fromtimestamp(mp4.stat().st_mtime, tz=timezone.utc).isoformat()
+        thumbnail = f'https://i.ytimg.com/vi/{vid}/hqdefault.jpg'
+
+        add_video({
+            'id': vid, 'title': title, 'description': '',
+            'channel_id': ch['id'], 'channel_name': ch['name'],
+            'duration': 0, 'upload_date': upload_date,
+            'view_count': 0, 'like_count': 0, 'thumbnail': thumbnail,
+            'file_path': str(rel), 'downloaded_at': downloaded_at,
+            'is_short': False, 'height': height, 'subtitle_path': vtt_fp,
+        })
+        existing_ids.add(vid)
+        added += 1
+        needs_enrichment.append(vid)
+        logger.info(f"Scan: registered '{title or vid}' → {rel}")
+
+    logger.info(f"Download scan complete: {added} registered, {no_channel} skipped (no channel match)")
+
+    if needs_enrichment:
+        threading.Thread(target=_enrich_scan_videos, args=(needs_enrichment,), daemon=True).start()
+
+
 if __name__ == '__main__':
     init_db()
     s = get_settings()
     rebuild_executor(s.get('max_concurrent', 2))
+    threading.Thread(target=_scan_downloads, daemon=True).start()
     scheduler.start()
     reschedule(s.get('check_interval', 180))
     scheduler.add_job(refresh_all_metadata, 'interval', weeks=1, id='meta_refresh', replace_existing=True)

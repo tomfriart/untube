@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0] - 2026-05-10
+### Added
+- One-off download — download any YouTube URL without adding a channel, pinned as "Uncategorized" in the sidebar
+- Export / import backup from System settings (downloads the SQLite database as a `.db` file)
+- Real uploader name and avatar fetched for Uncategorized / one-off downloads
+- Video recommendations panel ("Videos you may like") shown in the player sidebar
+- "More from [channel]" section in the player sidebar when more videos are available
+
+### Changed
+- Sidebar always shows "Uncategorized" pinned at the bottom when one-off downloads exist
+- Player sidebar hides "More from" when the channel has no other videos and falls back to recommendations
+
 ## [1.1.0] - 2026-05-07
 ### Added
 - Per-channel quality overrides

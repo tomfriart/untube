@@ -1,6 +1,7 @@
 services:
   untube:
     build: .
+    image: untube
     container_name: untube
     ports:
       - "3987:80"
