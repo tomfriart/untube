@@ -44,7 +44,7 @@ cd untube
 docker compose up -d --build
 ```
 
-Access at http://<your ip>:3987
+Access at http://YOURIP:3987
 
 ## First Time Setup
 
