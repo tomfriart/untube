@@ -1,0 +1,17 @@
+services:
+  untube:
+    build: .
+    image: untube
+    container_name: untube
+    ports:
+      - "3987:80"
+    volumes:
+      - ./data:/app/data
+      - ./downloads:/app/downloads
+    environment:
+      - FLASK_ENV=production
+      - DATA_DIR=/app/data
+      - DOWNLOADS_DIR=/app/downloads
+      - UNTube_API_KEY=
+      - UNTube_MAX_UPLOAD_MB=50
+    restart: unless-stopped

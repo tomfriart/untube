@@ -1,0 +1,17 @@
+{
+  "name": "UnTube",
+  "short_name": "UnTube",
+  "description": "Your personal YouTube downloader",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#E23D4C",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

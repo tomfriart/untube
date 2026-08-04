@@ -1,0 +1,5 @@
+flask==3.0.3
+waitress==3.0.2
+flask-cors==5.0.0
+yt-dlp[default]==2026.7.4
+apscheduler==3.10.4
